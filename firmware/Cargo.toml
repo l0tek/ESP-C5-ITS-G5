@@ -1,0 +1,26 @@
+[package]
+name = "cits-rx"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.88"
+
+[dependencies]
+critical-section = "1.2"
+crossbeam-queue = { version = "0.3.12", default-features = false, features = ["alloc"] }
+embassy-executor = "0.10.0"
+embassy-futures = "0.1.2"
+embassy-time = "0.5.1"
+esp-hal = { version = "~1.1.0", features = ["esp32c5", "unstable"] }
+esp-rtos = { version = "0.3.0", features = ["esp32c5", "embassy", "esp-alloc", "esp-radio"] }
+esp-bootloader-esp-idf = { version = "0.5.0", features = ["esp32c5"] }
+esp-alloc = "0.10.0"
+esp-backtrace = { version = "0.19.0", features = ["esp32c5", "println"] }
+esp-println = { version = "0.17.0", default-features = false, features = ["esp32c5", "jtag-serial", "critical-section"] }
+esp-radio = { version = "0.18.0", features = ["esp32c5", "esp-alloc", "unstable", "wifi", "sniffer"] }
+esp32-cits-core = { git = "https://git.hamburg.ccc.de/jtbx/esp32-cits-core", rev = "a6d0ea6ca2da130fde2b84060a34ef45e772a459", default-features = false, features = ["esp32c5"] }
+
+[profile.release]
+codegen-units = 1
+lto = "fat"
+opt-level = "s"
+debug = 2
