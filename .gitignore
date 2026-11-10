@@ -3,3 +3,5 @@ upstream/
 cits-pcap
 *.pcap
 test-results/
+android-app/target/
+android-app/dist/

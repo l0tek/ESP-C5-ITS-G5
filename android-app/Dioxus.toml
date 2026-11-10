@@ -1,0 +1,16 @@
+[application]
+name = "cits-map"
+default_platform = "android"
+
+[bundle]
+identifier = "org.l0tek.citsmap"
+publisher = "l0tek"
+short_description = "ITS-G5-Pakete vom ESP32-C5 auf der Karte"
+
+[web.app]
+title = "C-ITS Map"
+
+[android]
+min_sdk = 26
+target_sdk = 34
+compile_sdk = 36

@@ -128,3 +128,32 @@ Originalprojekt erhalten. Es wird für den eigenständigen Build nicht benötigt
 Dieser ältere Integrationsweg benötigt zusätzliche Build-Werkzeuge (unter anderem
 `protoc`) und wurde hier nicht bis zum fertigen Firmware-Build validiert.
 Die jeweiligen Upstream-Lizenzen gelten für die eingebundenen Abhängigkeiten.
+
+## Android-App mit Rust und Dioxus
+
+Die eigenständige App unter [`android-app/`](android-app/) empfängt die `CITS:`-Zeilen
+des ESP32-C5 per USB-OTG, dekodiert CAM-/DENM-Pakete in Rust und zeigt Positionen
+auf einer OpenStreetMap-Karte an. Aufnahmen lassen sich als Log oder klassisches
+PCAP importieren. Eine ausdrücklich aktivierbare TLS/MQTT-Weiterleitung sendet
+neue USB-Livepakete im OpenTrafficMap-Format an dessen Server; Demo- und
+Importdaten werden nicht veröffentlicht.
+
+Build, Installation, getestete Funktionen und Grenzen:
+[`android-app/README.md`](android-app/README.md).
+
+## Acknowledgements: OpenTrafficMap
+
+OpenTrafficMap has done the important groundwork of exploring low-cost C-ITS
+reception, ESP32-C5 receiver firmware, packet forwarding, and public traffic-map
+tooling.
+
+Huge thanks and praise to the OpenTrafficMap contributors for making their work
+available and for pushing open, accessible traffic infrastructure research forward.
+
+Links:
+
+- OpenTrafficMap website: [https://opentrafficmap.org](https://opentrafficmap.org)
+- OpenTrafficMap Codeberg organization: [https://codeberg.org/opentrafficmap](https://codeberg.org/opentrafficmap)
+- Original repository family: [https://codeberg.org/opentrafficmap](https://codeberg.org/opentrafficmap)
+
+This project is not an official OpenTrafficMap release.
