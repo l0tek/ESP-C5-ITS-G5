@@ -3,6 +3,11 @@
 Unabhängige Android-App für die Waveshare ESP32-C5-Zero-Capture-Firmware in diesem
 Repository. Dioxus 0.7.10 stellt die Oberfläche dar; USB-Empfang, Stream-Framing,
 PCAP-Import, ETSI-Decodierung und MQTT-Weiterleitung sind in Rust umgesetzt.
+Livepakete werden zusätzlich in einem begrenzten 8-MiB-Ringpuffer gehalten und
+können als klassisches WLAN-PCAP für Wireshark exportiert werden. Wenn der Puffer
+voll ist, ersetzt ein neues Paket das jeweils älteste; die Oberfläche zeigt diese
+Verluste an. Der Puffer bleibt nur bis zum Beenden der App erhalten. Unter Android
+10 oder neuer wird der Export in `Downloads/C-ITS Map` gespeichert.
 Die Karte nutzt lokal mitgeliefertes Leaflet 1.9.4 und OpenStreetMap-Kacheln.
 
 ## Funktionen

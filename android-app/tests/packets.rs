@@ -150,6 +150,17 @@ fn runtime_demo_and_import_use_real_decoding() {
     assert!(rt.forwarder.lock().unwrap().is_none());
 }
 #[test]
+fn live_frames_are_recorded_and_export_as_pcap() {
+    let rt = Runtime::default();
+    let frame = demo::cam_frame(9, 0, 0);
+    rt.frame(&frame, true);
+    assert_eq!(rt.recording_stats(), (1, frame.len(), 0));
+    let pcap = rt.recording.lock().unwrap().pcap();
+    assert_eq!(stream::import_frames(&pcap).unwrap().0, vec![frame]);
+    rt.clear_recording();
+    assert_eq!(rt.recording_stats(), (0, 0, 0));
+}
+#[test]
 fn denm_decodes_and_cancellation_removes_only_matching_action() {
     use c_its_parser::standards::{
         cdd_1_3_1_1::its_container::*, denm_1_3_1::denm_pdu_descriptions::*,

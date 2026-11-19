@@ -15,6 +15,7 @@ pub fn App() -> Element {
     let mut notice = use_signal(String::new);
     let mut node_id = use_signal(String::new);
     let mut forwarding = use_signal(|| (false, String::new(), 0u64, 0u64));
+    let mut recording = use_signal(|| (0usize, 0usize, 0u64));
     let poll_runtime = runtime.clone();
     use_future(move || {
         let rt = poll_runtime.clone();
@@ -25,6 +26,7 @@ pub fn App() -> Element {
                     let _ = document::eval(&format!("window.__citsData={json};if(window.citsRender)window.citsRender(window.__citsData);")).await;
                 }
                 snapshot.set(data);
+                recording.set(rt.recording_stats());
                 let next = rt
                     .forwarder
                     .lock()
@@ -60,6 +62,8 @@ pub fn App() -> Element {
     let import_file = runtime.clone();
     let import_text = runtime.clone();
     let share = runtime.clone();
+    let export = runtime.clone();
+    let clear = runtime.clone();
     let source = data.source.clone();
     rsx! {
         document::Title { "C-ITS Map" }
@@ -95,16 +99,29 @@ pub fn App() -> Element {
                     div { class: "metric", strong { "{vehicles}" } span { "CAM-Stationen" } }
                     div { class: "metric", strong { "{events}" } span { "DENM-Ereignisse" } }
                     div { class: "metric", strong { "{data.rejected + data.framing_errors}" } span { "Nicht darstellbar" } }
+                    div { class: "metric", strong { "{recording.read().0}" } span { "Aufgezeichnet" } }
                 }
                 div { class: "toolbar",
                     button { class: "primary", onclick: move |_| { notice.set(String::new()); if connect.snapshot().running { connect.stop(); } else { connect.connect(); } },
                         if data.running { "USB trennen" } else { "USB verbinden" }
                     }
                     button { disabled: data.running, onclick: move |_| {notice.set(String::new());modal.set("import");}, "Import" }
+                    button { disabled: recording.read().0 == 0, onclick: move |_| {
+                        match export.export_recording() { Ok(message) => notice.set(message), Err(e) => notice.set(e) }
+                    }, "PCAP exportieren" }
+                    button { class: "quiet", disabled: recording.read().0 == 0, onclick: move |_| {
+                        clear.clear_recording(); notice.set("Aufzeichnung gelöscht".into());
+                    }, "Aufzeichnung löschen" }
                     button { class: "quiet", disabled: data.running, onclick: move |_| { if let Err(e)=demo.demo(){notice.set(e);} }, "Demo" }
                     button { class: "quiet", onclick: move |_| {notice.set(String::new());modal.set("share");}, "OpenTrafficMap ↗" }
                 }
                 div { class: "source", span { "{source}" } button { class: "quiet", style: "padding:0;border:0;font-size:11px", onclick: move |_| modal.set("about"), "Info" } }
+                if recording.read().0 > 0 {
+                    div { class: "source",
+                        span { "Rohdatenpuffer: {recording.read().1 / 1024} KiB / 8192 KiB" }
+                        if recording.read().2 > 0 { span { " · {recording.read().2} ältere Frames ersetzt" } }
+                    }
+                }
                 if !notice.read().is_empty() { div { class: "notice", role: "alert", "{notice}" } }
                 if objects.is_empty() {
                     p { class: "empty", "Noch keine Positionen. ESP über USB-OTG verbinden oder eine Aufnahme importieren. Mit „Demo“ kannst du die Karte ausprobieren." }

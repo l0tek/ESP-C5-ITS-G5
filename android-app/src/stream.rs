@@ -3,6 +3,24 @@ pub const MAX_FRAME: usize = 2304;
 pub const MAX_LINE: usize = 5 + 2 * MAX_FRAME + 1;
 pub const MAX_IMPORT: usize = 8 * 1024 * 1024;
 
+pub fn export_pcap<'a>(frames: impl IntoIterator<Item = (u64, &'a [u8])>) -> Vec<u8> {
+    let mut out = Vec::new();
+    // Classic little-endian PCAP, version 2.4, LINKTYPE_IEEE802_11.
+    out.extend_from_slice(&[0xd4, 0xc3, 0xb2, 0xa1, 2, 0, 4, 0]);
+    for value in [0u32, 0, MAX_FRAME as u32, 105] {
+        out.extend_from_slice(&value.to_le_bytes());
+    }
+    for (received_ms, frame) in frames {
+        let seconds = received_ms / 1_000;
+        out.extend_from_slice(&(seconds.min(u32::MAX as u64) as u32).to_le_bytes());
+        out.extend_from_slice(&((received_ms % 1_000) as u32 * 1_000).to_le_bytes());
+        out.extend_from_slice(&(frame.len() as u32).to_le_bytes());
+        out.extend_from_slice(&(frame.len() as u32).to_le_bytes());
+        out.extend_from_slice(frame);
+    }
+    out
+}
+
 #[derive(Default)]
 pub struct LineDecoder {
     pending: Vec<u8>,

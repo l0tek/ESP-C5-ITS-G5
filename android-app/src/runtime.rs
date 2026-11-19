@@ -4,10 +4,43 @@ use crate::{
     model::Dashboard,
     stream::{LineDecoder, import_frames},
 };
+use std::collections::VecDeque;
 use std::sync::{
     Arc, Mutex,
     atomic::{AtomicBool, Ordering},
 };
+
+pub const MAX_RECORDING_BYTES: usize = 8 * 1024 * 1024;
+
+#[derive(Default)]
+pub struct Recording {
+    frames: VecDeque<(u64, Vec<u8>)>,
+    bytes: usize,
+    pub evicted: u64,
+}
+impl Recording {
+    fn push(&mut self, received_ms: u64, frame: &[u8]) {
+        if frame.len() > MAX_RECORDING_BYTES {
+            self.evicted += 1;
+            return;
+        }
+        while self.bytes + frame.len() > MAX_RECORDING_BYTES {
+            if let Some((_, old)) = self.frames.pop_front() {
+                self.bytes -= old.len();
+                self.evicted += 1;
+            }
+        }
+        self.bytes += frame.len();
+        self.frames.push_back((received_ms, frame.to_vec()));
+    }
+    pub fn pcap(&self) -> Vec<u8> {
+        crate::stream::export_pcap(
+            self.frames
+                .iter()
+                .map(|(time, frame)| (*time, frame.as_slice())),
+        )
+    }
+}
 
 pub fn now_ms() -> u64 {
     std::time::SystemTime::now()
@@ -20,6 +53,7 @@ pub struct Runtime {
     pub data: Arc<Mutex<Dashboard>>,
     pub cancel: Arc<AtomicBool>,
     pub forwarder: Arc<Mutex<Option<Forwarder>>>,
+    pub recording: Arc<Mutex<Recording>>,
 }
 impl Runtime {
     pub fn snapshot(&self) -> Dashboard {
@@ -32,7 +66,11 @@ impl Runtime {
         if live && let Some(f) = self.forwarder.lock().unwrap().as_ref() {
             f.publish(frame);
         }
-        let parsed = decoder::decode_frame(frame, now_ms());
+        let received_ms = now_ms();
+        if live {
+            self.recording.lock().unwrap().push(received_ms, frame);
+        }
+        let parsed = decoder::decode_frame(frame, received_ms);
         let mut data = self.data.lock().unwrap();
         data.frames += 1;
         match parsed {
@@ -42,6 +80,23 @@ impl Runtime {
                 data.last_error = e;
             }
         }
+    }
+    pub fn recording_stats(&self) -> (usize, usize, u64) {
+        let recording = self.recording.lock().unwrap();
+        (recording.frames.len(), recording.bytes, recording.evicted)
+    }
+    pub fn clear_recording(&self) {
+        *self.recording.lock().unwrap() = Recording::default();
+    }
+    pub fn export_recording(&self) -> Result<String, String> {
+        let pcap = {
+            let recording = self.recording.lock().unwrap();
+            if recording.frames.is_empty() {
+                return Err("Noch keine Livepakete aufgezeichnet".into());
+            }
+            recording.pcap()
+        };
+        crate::export::save_pcap(&pcap, now_ms())
     }
     pub fn import(&self, bytes: &[u8], source: &str) -> Result<(), String> {
         if self.data.lock().unwrap().running {
