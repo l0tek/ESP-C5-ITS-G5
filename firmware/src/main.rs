@@ -16,6 +16,8 @@ use esp_backtrace as _;
 use esp_hal::{
     clock::CpuClock,
     gpio::{Level, Output, OutputConfig},
+    rmt::{PulseCode, Rmt, TxChannelConfig, TxChannelCreator},
+    time::Rate,
     timer::timg::TimerGroup,
 };
 use esp32_cits_core::radio;
@@ -74,6 +76,48 @@ async fn main(_spawner: Spawner) -> ! {
     let cfg = esp_hal::Config::default().with_cpu_clock(CpuClock::max());
     let p = esp_hal::init(cfg);
 
+    // WS2812 on GPIO27: GRB, 800 kHz. Hardware RMT avoids timing-sensitive
+    // bit banging while Wi-Fi interrupts are running. Only update on changes.
+    let rmt = Rmt::new(p.RMT, Rate::from_mhz(80)).expect("LED RMT init failed");
+    let channel = rmt
+        .channel0
+        .configure_tx(
+            &TxChannelConfig::default()
+                .with_clk_divider(1)
+                .with_idle_output(true)
+                .with_idle_output_level(Level::Low),
+        )
+        .expect("LED channel init failed")
+        .with_pin(p.GPIO27);
+    let mut led_channel = Some(channel);
+    let mut set_led = |red: u8, green: u8, blue: u8| {
+        let mut pulses = [PulseCode::end_marker(); 26];
+        for (i, byte) in [green, red, blue].into_iter().enumerate() {
+            for bit in 0..8 {
+                let one = byte & (0x80 >> bit) != 0;
+                pulses[i * 8 + bit] = PulseCode::new(
+                    Level::High,
+                    if one { 64 } else { 32 },
+                    Level::Low,
+                    if one { 36 } else { 68 },
+                );
+            }
+        }
+        // 300 us reset/latch, followed by end marker.
+        pulses[24] = PulseCode::new(Level::Low, 12000, Level::Low, 12000);
+        if let Some(channel) = led_channel.take() {
+            led_channel = Some(match channel.transmit(&pulses) {
+                Ok(transaction) => match transaction.wait() {
+                    Ok(channel) => channel,
+                    Err((_, channel)) => channel,
+                },
+                Err((_, channel)) => channel,
+            });
+        }
+    };
+    set_led(12, 12, 0); // Yellow: booting.
+    esp_hal::delay::Delay::new().delay_millis(100);
+
     // Waveshare ESP32-C5-Zero: GPIO26 LOW=Keramikantenne, HIGH=IPEX1.
     // Für den ersten Test onboard, mit externem Antennenanschluss auf High setzen.
     let _antenna = Output::new(p.GPIO26, Level::Low, OutputConfig::default());
@@ -92,18 +136,39 @@ async fn main(_spawner: Spawner) -> ! {
             .replace(Some(ArrayQueue::new(QUEUE_SIZE)))
     });
 
-    let (mut controller, interfaces) =
-        esp_radio::wifi::new(p.WIFI, esp_radio::wifi::ControllerConfig::default())
-            .expect("wifi init failed");
-    controller
-        .set_band_mode(esp_radio::wifi::BandMode::_5G)
-        .expect("5 GHz mode failed");
+    // Keep initialization errors visible instead of immediately rebooting.
+    macro_rules! init_or_red {
+        ($result:expr, $message:literal) => {
+            match $result {
+                Ok(value) => value,
+                Err(error) => {
+                    set_led(24, 0, 0);
+                    esp_println::println!("CITS-ERROR {}: {:?}", $message, error);
+                    loop {
+                        embassy_time::Timer::after(embassy_time::Duration::from_secs(1)).await;
+                    }
+                }
+            }
+        };
+    }
+    let (mut controller, interfaces) = init_or_red!(
+        esp_radio::wifi::new(p.WIFI, esp_radio::wifi::ControllerConfig::default()),
+        "wifi init failed"
+    );
+    init_or_red!(
+        controller.set_band_mode(esp_radio::wifi::BandMode::_5G),
+        "5 GHz mode failed"
+    );
     let mut sniffer = interfaces.sniffer;
-    radio::setup_wifi_sniffer(ITS_CHANNEL, &mut sniffer, on_frame)
-        .expect("802.11p sniffer setup failed");
+    init_or_red!(
+        radio::setup_wifi_sniffer(ITS_CHANNEL, &mut sniffer, on_frame),
+        "802.11p sniffer setup failed"
+    );
 
     esp_println::println!("CITS-READY channel=180 freq=5900MHz antenna=onboard");
 
+    set_led(0, 4, 0); // Dim green: receiver ready.
+    let mut blue_until = None;
     let mut received: u64 = 0;
     let mut line = String::with_capacity(5 + MAX_FRAME * 2);
     let mut last_stat = embassy_time::Instant::now();
@@ -121,6 +186,15 @@ async fn main(_spawner: Spawner) -> ! {
             }
             esp_println::println!("{}", line);
             received += 1;
+            if blue_until.is_none() {
+                set_led(0, 0, 24);
+            }
+            blue_until =
+                Some(embassy_time::Instant::now() + embassy_time::Duration::from_millis(80));
+        }
+        if blue_until.is_some_and(|until| embassy_time::Instant::now() >= until) {
+            set_led(0, 4, 0);
+            blue_until = None;
         }
         if last_stat.elapsed() >= embassy_time::Duration::from_secs(5) {
             esp_println::println!(

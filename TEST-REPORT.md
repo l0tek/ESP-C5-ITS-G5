@@ -66,3 +66,22 @@ rustc --edition=2021 --test host/src/main.rs -o /tmp/cits-host-tests
 Die nächste offene Hardwareprüfung ist der Empfang einer bekannten ITS-G5-Quelle
 auf Kanal 180 mit Prüfung der exportierten Frames in Wireshark. Durchsatz,
 Paketverlustrate unter Last und Antennenreichweite sind noch nicht gemessen.
+
+## LED-Erweiterung vom 19. November 2026
+
+- WS2812 an GPIO27 per Hardware-RMT: Gelb beim Start, schwaches Grün nach
+  erfolgreicher Initialisierung, Blau für mindestens 80 ms nach exportierten
+  Datenframes. Bei fortlaufendem Empfang bleibt Blau aktiv.
+- Fehler der WLAN-, Band- oder Snifferinitialisierung setzen Rot und geben
+  `CITS-ERROR` aus; bis zum Reset bleibt der Fehlerzustand erhalten.
+- `cargo build --release --locked` im Firmwareverzeichnis erfolgreich.
+- Firmware per `./flash.sh` auf das angeschlossene Board geflasht;
+  Anwendungsgröße 525.264 Bytes. Anschließend Statusmeldungen bei
+  `uptime_ms=10896` und `15897`, ohne Frames oder Verluste.
+  Mitschnitt: `test-results/board-led-runtime.log`.
+- LED-Farben nicht visuell bestätigt. Blauer Empfangszustand und roter
+  Fehlerzustand wurden nicht auf der Hardware ausgelöst; ein positiver
+  Funkempfangstest steht weiterhin aus.
+- Android-ARM64-APK über `android-app/scripts/build-android.sh` neu gebaut.
+  Gradle erfolgreich; APK-Signatur mit `apksigner verify` und SHA256-Datei
+  geprüft. Kein neuer Android-Laufzeittest für diesen Firmwarewechsel.

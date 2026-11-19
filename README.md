@@ -73,6 +73,21 @@ Queue-/Speicherverluste akzeptierter Datenframes. Ausgefilterte Frames werden
 nicht als Verlust gezählt. Keine `CITS:`-Zeilen bedeuten keinen exportierten
 Datenframe; ohne bekannte Funkquelle lässt sich daraus kein Hardwarefehler ableiten.
 
+## LED-Status
+
+Die WS2812-RGB-LED an GPIO27 zeigt den Firmwarezustand:
+
+- Gelb: Start und Funkinitialisierung.
+- Schwaches Grün: Empfänger bereit.
+- Blau: mindestens 80 ms nach einem exportierten 802.11-Datenframe;
+  bei anhaltendem Empfang bleibt sie blau.
+- Rot: Fehler beim Initialisieren von WLAN, 5-GHz-Modus oder Sniffer.
+  Die Firmware meldet `CITS-ERROR` über USB und wartet bis zum Reset.
+
+Die LED wird direkt von der ESP-Firmware gesteuert; dafür muss diese auf dem
+Board aktualisiert werden. Eine APK-Installation allein ändert die LED nicht.
+Grün bestätigt die Initialisierung, nicht den tatsächlichen ITS-G5-Empfang.
+
 ## PCAP aufnehmen
 
 Den seriellen Monitor vorher schließen; nur ein Prozess sollte den USB-Datenstrom lesen.
