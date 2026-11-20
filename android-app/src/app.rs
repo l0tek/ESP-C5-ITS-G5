@@ -59,6 +59,7 @@ pub fn App() -> Element {
     let vehicles = objects.iter().filter(|o| o.kind == "CAM").count();
     let events = objects.iter().filter(|o| o.kind == "DENM").count();
     let connect = runtime.clone();
+    let connect_ble = runtime.clone();
     let demo = runtime.clone();
     let import_file = runtime.clone();
     let import_text = runtime.clone();
@@ -103,9 +104,10 @@ pub fn App() -> Element {
                     div { class: "metric", strong { "{recording.read().0}" } span { "Aufgezeichnet" } }
                 }
                 div { class: "toolbar",
-                    button { class: "primary", onclick: move |_| { notice.set(String::new()); if connect.snapshot().running { connect.stop(); } else { connect.connect(); } },
-                        if data.running { "USB trennen" } else { "USB verbinden" }
+                    button { class: "primary", onclick: move |_| { notice.set(String::new()); if connect.snapshot().running { connect.stop(); } else { connect.connect_usb(); } },
+                        if data.running { "Trennen" } else { "USB verbinden" }
                     }
+                    button { disabled: data.running, onclick: move |_| { notice.set(String::new()); connect_ble.connect_ble(); }, "Bluetooth verbinden" }
                     button { disabled: data.running, onclick: move |_| {notice.set(String::new());modal.set("import");}, "Import" }
                     button { disabled: recording.read().0 == 0, onclick: move |_| {
                         match export.export_recording() { Ok(message) => notice.set(message), Err(e) => notice.set(e) }
@@ -125,7 +127,7 @@ pub fn App() -> Element {
                 }
                 if !notice.read().is_empty() { div { class: "notice", role: "alert", "{notice}" } }
                 if objects.is_empty() {
-                    p { class: "empty", "Noch keine Positionen. ESP über USB-OTG verbinden oder eine Aufnahme importieren. Mit „Demo“ kannst du die Karte ausprobieren." }
+                    p { class: "empty", "Noch keine Positionen. ESP über Bluetooth oder USB-OTG verbinden oder eine Aufnahme importieren. Mit „Demo“ kannst du die Karte ausprobieren." }
                 } else {
                     ul { class: "object-list",
                         for object in objects {
@@ -193,7 +195,7 @@ pub fn App() -> Element {
                         }
                     } else if *modal.read()=="share" {
                         h2 { "Auf OpenTrafficMap teilen" }
-                        p { "Mit aktivierter Weiterleitung sendet die App neu empfangene USB-Livepakete an den OpenTrafficMap-Server. Die enthaltenen Positionen können öffentlich auf der Karte erscheinen. Demo- und Importdaten werden nie weitergeleitet." }
+                        p { "Mit aktivierter Weiterleitung sendet die App neu empfangene Bluetooth-/USB-Livepakete an den OpenTrafficMap-Server. Die enthaltenen Positionen können öffentlich auf der Karte erscheinen. Demo- und Importdaten werden nie weitergeleitet." }
                         label { r#for: "node-id", "Deine OpenTrafficMap-Node-ID" }
                         input { id: "node-id", r#type: "text", placeholder: "z. B. MAC-Adresse deines Empfängers", value: "{node_id}", disabled: forwarding.read().0, oninput: move |e| node_id.set(e.value().chars().take(64).collect()) }
                         p { "Verwende deine eigene registrierte Node-ID. Kartenanzeige und Freischaltung hängen vom OpenTrafficMap-Server ab." }

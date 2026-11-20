@@ -62,7 +62,7 @@ impl Runtime {
         data.clone()
     }
     pub fn frame(&self, frame: &[u8], live: bool) {
-        // Only live USB packets may be published. Imports and demos remain local.
+        // Only live Bluetooth/USB packets may be published. Imports and demos remain local.
         if live && let Some(f) = self.forwarder.lock().unwrap().as_ref() {
             f.publish(frame);
         }
@@ -100,7 +100,7 @@ impl Runtime {
     }
     pub fn import(&self, bytes: &[u8], source: &str) -> Result<(), String> {
         if self.data.lock().unwrap().running {
-            return Err("USB-Empfang zuerst trennen".into());
+            return Err("Live-Empfang zuerst trennen".into());
         }
         let (frames, errors) = import_frames(bytes)?;
         if frames.is_empty() {
@@ -121,7 +121,7 @@ impl Runtime {
     }
     pub fn demo(&self) -> Result<(), String> {
         if self.data.lock().unwrap().running {
-            return Err("USB-Empfang zuerst trennen".into());
+            return Err("Live-Empfang zuerst trennen".into());
         }
         *self.data.lock().unwrap() = Dashboard {
             source: "DEMO · synthetische Pakete".into(),
@@ -143,6 +143,9 @@ impl Runtime {
         }
     }
     pub fn connect(&self) {
+        self.connect_usb();
+    }
+    pub fn connect_usb(&self) {
         let mut data = self.data.lock().unwrap();
         if data.running {
             return;
@@ -170,6 +173,37 @@ impl Runtime {
                 data.status = match result {
                     Ok(()) => "USB getrennt".into(),
                     Err(e) => format!("USB: {e}"),
+                };
+            });
+        }
+    }
+    pub fn connect_ble(&self) {
+        let mut data = self.data.lock().unwrap();
+        if data.running {
+            return;
+        }
+        #[cfg(not(target_os = "android"))]
+        {
+            data.status = "Bluetooth LE ist in der Android-App verfügbar.".into();
+        }
+        #[cfg(target_os = "android")]
+        {
+            *data = Dashboard {
+                running: true,
+                source: "Bluetooth LE · ESP32-C5".into(),
+                status: "Suche CITS-G5 über Bluetooth…".into(),
+                ..Dashboard::default()
+            };
+            self.cancel.store(false, Ordering::Relaxed);
+            let this = self.clone();
+            std::thread::spawn(move || {
+                let result = crate::ble::receive(&this);
+                this.stop_forwarding();
+                let mut data = this.data.lock().unwrap();
+                data.running = false;
+                data.status = match result {
+                    Ok(()) => "Bluetooth getrennt".into(),
+                    Err(e) => format!("Bluetooth: {e}"),
                 };
             });
         }

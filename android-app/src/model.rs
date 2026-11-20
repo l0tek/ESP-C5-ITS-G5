@@ -39,7 +39,7 @@ impl Default for Dashboard {
             rejected: 0,
             framing_errors: 0,
             source: "Keine Quelle".into(),
-            status: "ESP32-C5 über USB-OTG verbinden".into(),
+            status: "ESP32-C5 über Bluetooth oder USB-OTG verbinden".into(),
             last_error: String::new(),
             running: false,
             revision: 0,

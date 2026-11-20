@@ -1,5 +1,7 @@
 #[cfg(feature = "ui")]
 pub mod app;
+#[cfg(target_os = "android")]
+pub mod ble;
 pub mod decoder;
 pub mod demo;
 pub mod export;

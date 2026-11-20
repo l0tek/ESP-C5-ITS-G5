@@ -51,6 +51,19 @@ if not any(v.get('{'+ns+'}name')=='android.hardware.usb.host' for v in root.find
  ET.SubElement(root,'uses-feature',{'{'+ns+'}name':'android.hardware.usb.host','{'+ns+'}required':'true'})
 if not any(v.get('{'+ns+'}name')=='android.permission.INTERNET' for v in root.findall('uses-permission')):
  ET.SubElement(root,'uses-permission',{'{'+ns+'}name':'android.permission.INTERNET'})
+permissions=[
+ ('android.permission.BLUETOOTH',{'{'+ns+'}maxSdkVersion':'30'}),
+ ('android.permission.BLUETOOTH_ADMIN',{'{'+ns+'}maxSdkVersion':'30'}),
+ ('android.permission.ACCESS_FINE_LOCATION',{'{'+ns+'}maxSdkVersion':'30'}),
+ ('android.permission.BLUETOOTH_SCAN',{'{'+ns+'}usesPermissionFlags':'neverForLocation'}),
+ ('android.permission.BLUETOOTH_CONNECT',{}),
+]
+existing={v.get('{'+ns+'}name') for v in root.findall('uses-permission')}
+for name,extra in permissions:
+ if name not in existing:
+  ET.SubElement(root,'uses-permission',{'{'+ns+'}name':name,**extra})
+if not any(v.get('{'+ns+'}name')=='android.hardware.bluetooth_le' for v in root.findall('uses-feature')):
+ ET.SubElement(root,'uses-feature',{'{'+ns+'}name':'android.hardware.bluetooth_le','{'+ns+'}required':'false'})
 app=root.find('application');app.set('{'+ns+'}label','C-ITS Map');app.set('{'+ns+'}usesCleartextTraffic','false')
 tree.write(path,encoding='utf-8',xml_declaration=True)
 # dx 0.7.10 does not expose WebView User-Agent configuration. Identify tile requests

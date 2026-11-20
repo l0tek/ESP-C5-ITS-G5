@@ -1,7 +1,8 @@
 # C-ITS RX – Waveshare ESP32-C5-Zero (Rust)
 
 Rust-Firmware für den Empfang roher ITS-G5-/802.11p-Datenframes auf Kanal 180
-(5900 MHz), mit USB-Ausgabe und PCAP-Recorder für Linux. Die Anwendung ruft
+(5900 MHz), mit paralleler Ausgabe über Bluetooth LE und USB sowie PCAP-Recorder
+für Linux. Die Anwendung ruft
 keine Sendefunktion auf und verbindet sich nicht mit einem Access Point.
 
 **Stand 10. November 2026:** Release-Build, Flashen und Start auf dem angeschlossenen
@@ -64,12 +65,13 @@ Der Beispielpfad gehört zum hier geprüften Board. Erwartete Meldungen:
 ```text
 CITS-BOOT waveshare-esp32-c5-zero channel=180 rx-only
 CITS-READY channel=180 freq=5900MHz antenna=onboard
-CITS-STAT packets=0 callbacks=0 dropped=0 uptime_ms=5783
+CITS-STAT packets=0 callbacks=0 dropped=0 ble_dropped=0 uptime_ms=5783
 ```
 
 Alle fünf Sekunden erscheint eine Statuszeile. `packets` zählt ausgegebene
-Datenframes, `callbacks` alle Aufrufe des Empfangs-Callbacks und `dropped`
-Queue-/Speicherverluste akzeptierter Datenframes. Ausgefilterte Frames werden
+Datenframes, `callbacks` alle Aufrufe des Empfangs-Callbacks, `dropped`
+Queue-/Speicherverluste akzeptierter Datenframes und `ble_dropped` volle
+Bluetooth-Ausgabequeues. Ausgefilterte Frames werden
 nicht als Verlust gezählt. Keine `CITS:`-Zeilen bedeuten keinen exportierten
 Datenframe; ohne bekannte Funkquelle lässt sich daraus kein Hardwarefehler ableiten.
 
@@ -125,8 +127,9 @@ hinzufügen und neu anmelden.
 - Zeitstempel sind Host-Verarbeitungszeiten, keine Funk-Empfangszeitstempel.
   Bei Logdateien wird die Konvertierungszeit verwendet.
 - Kein CAM-/DENM-Decoder und keine Radiotap-Metadaten wie RSSI.
-- 16 Queue-Einträge; Hex-Ausgabe verdoppelt ungefähr das Transportvolumen.
-  Hohe Paketlast und USB-Unterbrechungen können Frames kosten.
+- 16 Empfangs- und vier Bluetooth-Ausgabeeinträge; Hex-Ausgabe verdoppelt
+  ungefähr das Transportvolumen. Hohe Paketlast und Transportunterbrechungen
+  können Frames kosten.
 - Kein positiver Funkempfangstest ohne passende ITS-G5-Quelle; `CITS-READY`
   bestätigt die erfolgreiche Rückkehr der Initialisierungsfunktionen.
 - Für die externe Antenne in `firmware/src/main.rs` den GPIO26-Ausgang auf
@@ -147,10 +150,10 @@ Die jeweiligen Upstream-Lizenzen gelten für die eingebundenen Abhängigkeiten.
 ## Android-App mit Rust und Dioxus
 
 Die eigenständige App unter [`android-app/`](android-app/) empfängt die `CITS:`-Zeilen
-des ESP32-C5 per USB-OTG, dekodiert CAM-/DENM-Pakete in Rust und zeigt Positionen
+des ESP32-C5 per Bluetooth LE oder USB-OTG, dekodiert CAM-/DENM-Pakete in Rust und zeigt Positionen
 auf einer OpenStreetMap-Karte an. Aufnahmen lassen sich als Log oder klassisches
 PCAP importieren. Eine ausdrücklich aktivierbare TLS/MQTT-Weiterleitung sendet
-neue USB-Livepakete im OpenTrafficMap-Format an dessen Server; Demo- und
+neue Livepakete im OpenTrafficMap-Format an dessen Server; Demo- und
 Importdaten werden nicht veröffentlicht.
 
 Build, Installation, getestete Funktionen und Grenzen:

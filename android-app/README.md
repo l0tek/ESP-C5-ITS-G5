@@ -2,7 +2,8 @@
 
 Unabhängige Android-App für die Waveshare ESP32-C5-Zero-Capture-Firmware in diesem
 Repository. Dioxus 0.7.10 stellt die Oberfläche dar; USB-Empfang, Stream-Framing,
-PCAP-Import, ETSI-Decodierung und MQTT-Weiterleitung sind in Rust umgesetzt.
+Bluetooth-/USB-Empfang, Stream-Framing, PCAP-Import, ETSI-Decodierung und
+MQTT-Weiterleitung sind in Rust umgesetzt.
 Livepakete werden zusätzlich in einem begrenzten 8-MiB-Ringpuffer gehalten und
 können als klassisches WLAN-PCAP für Wireshark exportiert werden. Wenn der Puffer
 voll ist, ersetzt ein neues Paket das jeweils älteste; die Oberfläche zeigt diese
@@ -13,6 +14,10 @@ Die Karte nutzt lokal mitgeliefertes Leaflet 1.9.4 und OpenStreetMap-Kacheln.
 ## Funktionen
 
 - ESP32-C5 USB Serial/JTAG (`303a:1001`) über Android USB Host / OTG, ohne Root.
+- ESP32-C5 über Bluetooth Low Energy; die App findet gezielt den Dienst
+  `c1750001-6c6f-7465-6b2d-636974736735` und empfängt den Datenstrom per GATT-
+  Notifications. Android fragt die nötige Bluetooth-Berechtigung beim ersten
+  Verbindungsversuch ab.
 - Android-Dialog für die USB-Gerätefreigabe; Geräteerkennung und Bulk-IN-Lesen
   laufen über die Android-USB-API und JNI, nicht über `/dev/ttyACM*`.
 - `CITS:`-Hexzeilen mit Chunk-Reassembly und begrenzter Zeilenlänge.
@@ -38,7 +43,8 @@ Für die öffentliche Karte:
 
 1. Eigene Node-ID bei OpenTrafficMap registrieren bzw. mit den Betreibern klären:
    [Node Registration](https://wiki.opentrafficmap.org/en:node_registration).
-2. ESP32-C5 am Android-Gerät anschließen und **USB verbinden** wählen.
+2. **Bluetooth verbinden** wählen (alternativ ESP per OTG anschließen und
+   **USB verbinden** wählen).
 3. **OpenTrafficMap ↗** öffnen, eigene Node-ID eintragen und **Livepakete teilen**
    aktivieren. Erst diese Aktion startet die Netzwerkverbindung.
 4. **Öffentliche OpenTrafficMap öffnen ↗** wählen.
@@ -94,8 +100,10 @@ adb install -r "dist/cits-map-$version-android-arm64.apk"
 ```
 
 Alternativ die APK auf dem Telefon öffnen. Das Telefon muss USB-Host/OTG unterstützen
-und das Board mit Strom versorgen können. Die App braucht keinen Standortzugriff,
-weil Positionen aus den Funkpaketen stammen. Internetzugriff wird für Kartenkacheln
+und das Board mit Strom versorgen können. Ab Android 12 nutzt die App
+`BLUETOOTH_SCAN` mit `neverForLocation`; Positionen stammen ausschließlich aus den
+Funkpaketen. Auf Android 6 bis 11 verlangt das System für BLE-Scans noch die
+Standortberechtigung. Internetzugriff wird für Kartenkacheln
 und für eine aktivierte OpenTrafficMap-Weiterleitung verwendet.
 
 Ein direkter `dx build` allein enthält die nachgelagerten Manifest-/User-Agent-

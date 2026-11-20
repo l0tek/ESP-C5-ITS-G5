@@ -20,7 +20,11 @@ use esp_hal::{
     time::Rate,
     timer::timg::TimerGroup,
 };
+use esp_radio::ble::controller::BleConnector;
 use esp32_cits_core::radio;
+use trouble_host::prelude::ExternalController;
+
+mod ble;
 
 // Kanal 180 = 5900 MHz; ausschließlich Empfang, kein TX.
 const ITS_CHANNEL: radio::Channel = 180;
@@ -70,7 +74,7 @@ fn on_frame(frame: esp_radio::wifi::sniffer::PromiscuousPkt<'_>) {
 }
 
 #[esp_rtos::main]
-async fn main(_spawner: Spawner) -> ! {
+async fn main(spawner: Spawner) -> ! {
     esp_println::println!("CITS-BOOT waveshare-esp32-c5-zero channel=180 rx-only");
 
     let cfg = esp_hal::Config::default().with_cpu_clock(CpuClock::max());
@@ -130,6 +134,10 @@ async fn main(_spawner: Spawner) -> ! {
     let sw = esp_hal::interrupt::software::SoftwareInterruptControl::new(p.SW_INTERRUPT);
     esp_rtos::start(tg.timer0, sw.software_interrupt0);
 
+    let ble_connector = BleConnector::new(p.BT, Default::default()).expect("BLE init failed");
+    let ble_controller: ExternalController<_, 1> = ExternalController::new(ble_connector);
+    spawner.spawn(ble::run(ble_controller).expect("BLE task"));
+
     critical_section::with(|cs| {
         RX_QUEUE
             .borrow(cs)
@@ -185,6 +193,8 @@ async fn main(_spawner: Spawner) -> ! {
                 let _ = write!(&mut line, "{b:02x}");
             }
             esp_println::println!("{}", line);
+            line.push('\n');
+            ble::enqueue(line.as_bytes());
             received += 1;
             if blue_until.is_none() {
                 set_led(0, 0, 24);
@@ -198,10 +208,11 @@ async fn main(_spawner: Spawner) -> ! {
         }
         if last_stat.elapsed() >= embassy_time::Duration::from_secs(5) {
             esp_println::println!(
-                "CITS-STAT packets={} callbacks={} dropped={} uptime_ms={}",
+                "CITS-STAT packets={} callbacks={} dropped={} ble_dropped={} uptime_ms={}",
                 received,
                 CALLBACKS.load(Ordering::Relaxed),
                 DROPPED.load(Ordering::Relaxed),
+                ble::dropped(),
                 embassy_time::Instant::now().as_millis()
             );
             last_stat = embassy_time::Instant::now();
