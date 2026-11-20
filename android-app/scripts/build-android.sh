@@ -21,10 +21,28 @@ case "$android_target" in
   x86_64-linux-android) abi=x86_64; native_abi=x86_64 ;;
   *) echo "Unbekanntes Ziel: $android_target" >&2; exit 1 ;;
 esac
+# Reserve a fresh version before every build; failed attempts keep their number.
+version_info=$(python3 - <<'VERSION_PY'
+import json, pathlib
+path = pathlib.Path('android-version.json')
+state = json.loads(path.read_text())
+major, minor, patch = map(int, state['version_name'].split('.'))
+state['version_name'] = f'{major}.{minor}.{patch + 1}'
+state['version_code'] += 1
+if not 1 <= state['version_code'] <= 2_100_000_000:
+    raise SystemExit('Android versionCode out of range')
+path.write_text(json.dumps(state, indent=2) + '\n')
+print(state['version_name'], state['version_code'])
+VERSION_PY
+)
+read -r CITS_APP_VERSION CITS_ANDROID_VERSION_CODE <<< "$version_info"
+export CITS_APP_VERSION CITS_ANDROID_VERSION_CODE
+printf 'Building Android %s (versionCode %s)\n' "$CITS_APP_VERSION" "$CITS_ANDROID_VERSION_CODE"
 dx build --android --release --locked --no-default-features --features mobile --target "$android_target"
 project="target/dx/cits-map/release/android/app"
+cp android/MainActivity.kt "$project/app/src/main/kotlin/dev/dioxus/main/MainActivity.kt"
 python3 - "$project" "$native_abi" <<'PY'
-import pathlib,re,sys,xml.etree.ElementTree as ET
+import os,pathlib,re,sys,xml.etree.ElementTree as ET
 project=pathlib.Path(sys.argv[1])
 path=project/'app/src/main/AndroidManifest.xml'
 ns='http://schemas.android.com/apk/res/android'; ET.register_namespace('android',ns)
@@ -47,12 +65,16 @@ if agent not in s:
  webview.write_text(s)
 gradle=project/'app/build.gradle.kts'
 s=re.sub(r'// CITS-ABI-BEGIN.*?// CITS-ABI-END\n?', '', gradle.read_text(), flags=re.S)
+s, code_count = re.subn(r'versionCode = \d+', 'versionCode = ' + os.environ['CITS_ANDROID_VERSION_CODE'], s)
+s, name_count = re.subn(r'versionName = "[^"]*"', 'versionName = "' + os.environ['CITS_APP_VERSION'] + '"', s)
+if code_count != 1 or name_count != 1:
+ raise SystemExit('Android Gradle template changed; version patch must be updated')
 s+='\n// CITS-ABI-BEGIN\nandroid { defaultConfig { ndk { abiFilters.clear(); abiFilters.add("'+sys.argv[2]+'") } } }\n// CITS-ABI-END\n'
 gradle.write_text(s)
 PY
 (cd "$project" && ./gradlew --no-daemon assembleDebug)
 mkdir -p dist
-output="cits-map-0.1.0-android-$abi.apk"
+output="cits-map-$CITS_APP_VERSION-android-$abi.apk"
 cp "$project/app/build/outputs/apk/debug/app-debug.apk" "dist/$output"
 (cd dist && sha256sum "$output" > "$output.sha256")
 printf 'APK: %s/dist/%s\n' "$PWD" "$output"

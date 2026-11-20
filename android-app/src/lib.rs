@@ -3,6 +3,7 @@ pub mod app;
 pub mod decoder;
 pub mod demo;
 pub mod export;
+pub mod file_import;
 pub mod forwarding;
 pub mod model;
 pub mod runtime;

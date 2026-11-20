@@ -11,6 +11,7 @@ pub fn App() -> Element {
     let runtime = use_hook(Runtime::default);
     let mut snapshot = use_signal(Dashboard::default);
     let mut modal = use_signal(|| "");
+    let mut import_busy = use_signal(|| false);
     let mut pasted = use_signal(String::new);
     let mut notice = use_signal(String::new);
     let mut node_id = use_signal(String::new);
@@ -150,7 +151,25 @@ pub fn App() -> Element {
                     if *modal.read()=="import" {
                         h2 { "Aufnahme öffnen" }
                         p { "CITS-Log oder klassisches WLAN-PCAP (Linktyp 105), maximal 8 MiB. Importierte Pakete werden ausschließlich lokal verarbeitet." }
-                        input { r#type: "file", accept: ".txt,.log,.pcap", onchange: move |event: Event<FormData>| {
+                        if cfg!(target_os = "android") {
+                            button { class: "primary", disabled: *import_busy.read(), onclick: move |_| {
+                                let rt = import_file.clone();
+                                async move {
+                                    import_busy.set(true);
+                                    notice.set(String::new());
+                                    match crate::file_import::pick_capture().await {
+                                        Ok(Some((bytes, name))) => match rt.import(&bytes, &name) {
+                                            Ok(()) => modal.set(""),
+                                            Err(error) => notice.set(error),
+                                        },
+                                        Ok(None) => notice.set("Dateiauswahl abgebrochen".into()),
+                                        Err(error) => notice.set(format!("Dateiauswahl: {error}")),
+                                    }
+                                    import_busy.set(false);
+                                }
+                            }, if *import_busy.read() { "Datei wird geöffnet …" } else { "PCAP / Log auswählen …" } }
+                        } else {
+                        input { r#type: "file", accept: "*/*", onchange: move |event: Event<FormData>| {
                             let rt=import_file.clone();
                             async move {
                                 if let Some(file)=event.files().first() {
@@ -162,6 +181,7 @@ pub fn App() -> Element {
                                 }
                             }
                         } }
+                        }
                         label { r#for: "packet-log", "Oder CITS-Zeilen einfügen" }
                         textarea { id: "packet-log", placeholder: "CITS:08…", value: "{pasted}", oninput: move |e| pasted.set(e.value().chars().take(100_000).collect()) }
                         if !notice.read().is_empty() { p { role: "alert", "{notice}" } }
@@ -194,6 +214,7 @@ pub fn App() -> Element {
                         p { a { class: "help-link", href: "https://opentrafficmap.org", target: "_blank", rel: "noopener", "Öffentliche OpenTrafficMap öffnen ↗" } }
                     } else {
                         h2 { "Offene Verkehrsforschung" }
+                        p { "Version " {option_env!("CITS_APP_VERSION").unwrap_or(env!("CARGO_PKG_VERSION"))} " · Build " {option_env!("CITS_ANDROID_VERSION_CODE").unwrap_or("Entwicklung")} }
                         p { "OpenTrafficMap hat wichtige Grundlagen für günstigen C-ITS-Empfang, ESP32-C5-Firmware, Paketweiterleitung und öffentliche Verkehrskarten geschaffen. Vielen Dank an alle Mitwirkenden." }
                         p { "Dieses Projekt ist keine offizielle OpenTrafficMap-Veröffentlichung." }
                         p { "Die App dekodiert CAM und DENM. Positionen werden nach 60 s (CAM) bzw. 5 min (DENM) ausgeblendet. Kryptografische Signaturen werden nicht geprüft; die Anzeige ist keine verlässliche Verkehrs- oder Gefahrenwarnung." }

@@ -80,3 +80,32 @@ Test gestartete Emulator wurde anschließend beendet.
 
 Lokale ausführliche Logs liegen unter `../test-results/`; sie und die APKs sind
 von Git ausgeschlossen. Die Quellen und der Bericht sind im Projekt enthalten.
+
+## Import und Versionierung vom 20. November 2026
+
+- Der Android-Import verwendet einen eigenen Button und den nativen
+  `ACTION_OPEN_DOCUMENT`-Dialog in `android/MainActivity.kt`. Der ContentResolver
+  liest die Auswahl in einem Hintergrundthread mit einer Grenze von 8 MiB.
+  Der Rust-Decoder erhält die Bytes über JNI. Abbruch und Lesefehler werden
+  angezeigt. HTML-Dateieingaben werden nur auf Desktop verwendet.
+- Jeder Aufruf von `scripts/build-android.sh` erhöht Patchversion und Android-
+  `versionCode` in `android-version.json`. Version und Buildnummer stehen im
+  Info-Dialog; APK-Dateinamen enthalten die Version. Die Regel steht in
+  `../AGENTS.md`.
+- ARM64-APK 0.1.5, versionCode 6 erfolgreich gebaut. Paket-ID und Signierschlüssel
+  entsprechen der vorherigen ARM64-APK. Manifestversion mit `aapt`, Signatur
+  mit `apksigner` und SHA256-Datei geprüft.
+- `cargo test --locked`: 1 Unit-Test und 19 Integrationstests erfolgreich;
+  `cargo fmt --check`, `bash -n scripts/build-android.sh` und
+  `git diff --check` erfolgreich.
+- Android-14-Emulator neu eingerichtet; x86-64-APK 0.1.4 (versionCode 5)
+  installiert. Der sichtbare Import-Button öffnet den nativen Systemdialog.
+  Abbruch kehrt zur App zurück und zeigt „Dateiauswahl abgebrochen“.
+- Die vom Benutzer bereitgestellte PCAP wurde über den echten Dokumentdialog
+  aus Downloads ausgewählt: 1.118 Frames, 7 dekodierte CAM-Nachrichten und
+  2 sichtbare Kartenmarker. Screenshot lokal:
+  `../test-results/android-native-pcap-import.png`.
+- Die automatische Prüfung des Abbruchhinweises überschritt zunächst das
+  20-Sekunden-Zeitlimit des frisch gestarteten Emulators. Der Hinweis und der
+  wieder aktivierte Auswahlbutton wurden danach im WebView bestätigt.
+- Kein physisches Telefon angeschlossen; das Update dort ist noch zu bestätigen.

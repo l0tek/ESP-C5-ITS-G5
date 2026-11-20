@@ -24,7 +24,10 @@ Die Karte nutzt lokal mitgeliefertes Leaflet 1.9.4 und OpenStreetMap-Kacheln.
 - Aktualisierung vorhandener Marker; lokale Anzeigezeiten 60 s für CAM und
   5 min für DENM, maximal 512 Objekte. Das ist eine Anzeigeheuristik, keine
   vollständige Auswertung aller ETSI-Gültigkeitsbedingungen.
-- Log-/PCAP-Import bis 8 MiB. Unterstützt wird klassisches PCAP 2.4 mit Linktyp
+- Log-/PCAP-Import bis 8 MiB. Unter Android öffnet der Button
+  **PCAP / Log auswählen …** den nativen Dokumentdialog. PCAP- und Logdateien
+  werden über Androids ContentResolver gelesen; HTML-Dateieingaben werden dort
+  nicht verwendet. Unterstützt wird klassisches PCAP 2.4 mit Linktyp
   105 in beiden Byte-Reihenfolgen. PCAPNG/Radiotap bitte vorher konvertieren.
 - Demo mit drei synthetisch codierten CAM-Paketen durch dieselbe Decoderpipeline.
 
@@ -74,7 +77,10 @@ export ANDROID_NDK_HOME="$ANDROID_HOME/ndk/27.2.12479018"
 ./scripts/build-android.sh
 ```
 
-Ergebnis: `dist/cits-map-0.1.0-android-arm64.apk` plus SHA256-Datei.
+Ergebnis: `dist/cits-map-<version>-android-arm64.apk` plus SHA256-Datei.
+Jeder Aufruf erhöht automatisch die Patchversion und Android-`versionCode` in
+`android-version.json`, auch wenn der Build danach fehlschlägt. Diese Datei
+mitcommitten. Die installierte Version steht im Info-Dialog.
 Rust wird im Release-Profil gebaut. Die APK ist für die lokale Installation mit
 dem Android-Debugschlüssel signiert, nicht für eine Play-Store-Veröffentlichung.
 Das Skript ergänzt reproduzierbar das USB-Host-Feature im generierten Manifest
@@ -83,7 +89,8 @@ und einen identifizierbaren WebView-User-Agent für die Kartenanfragen.
 Installation:
 
 ```bash
-adb install -r dist/cits-map-0.1.0-android-arm64.apk
+version=$(python3 -c 'import json; print(json.load(open("android-version.json"))["version_name"])')
+adb install -r "dist/cits-map-$version-android-arm64.apk"
 ```
 
 Alternativ die APK auf dem Telefon öffnen. Das Telefon muss USB-Host/OTG unterstützen
@@ -148,7 +155,8 @@ bedient ihre Oberfläche über den WebView-Debugging-Endpunkt.
 ```bash
 # Im Verzeichnis android-app:
 ./scripts/build-android.sh x86_64-linux-android
-adb -s emulator-5554 install -r dist/cits-map-0.1.0-android-x86_64.apk
+version=$(python3 -c 'import json; print(json.load(open("android-version.json"))["version_name"])')
+adb -s emulator-5554 install -r "dist/cits-map-$version-android-x86_64.apk"
 cd ..
 mkdir -p test-results
 python3 -m venv /tmp/cits-ui-tests
