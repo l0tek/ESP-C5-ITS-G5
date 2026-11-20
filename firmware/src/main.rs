@@ -124,7 +124,8 @@ async fn main(spawner: Spawner) -> ! {
 
     // Waveshare ESP32-C5-Zero: GPIO26 LOW=Keramikantenne, HIGH=IPEX1.
     // Für den ersten Test onboard, mit externem Antennenanschluss auf High setzen.
-    let _antenna = Output::new(p.GPIO26, Level::Low, OutputConfig::default());
+    let mut antenna = Output::new(p.GPIO26, Level::Low, OutputConfig::default());
+    let mut external_antenna = false;
 
     // Kein PSRAM: Waveshare ESP32-C5-Zero besitzt 4MB Flash und internes RAM.
     esp_alloc::heap_allocator!(#[esp_hal::ram(reclaimed)] size: 65536);
@@ -181,6 +182,15 @@ async fn main(spawner: Spawner) -> ! {
     let mut line = String::with_capacity(5 + MAX_FRAME * 2);
     let mut last_stat = embassy_time::Instant::now();
     loop {
+        let requested_antenna = ble::external_antenna();
+        if requested_antenna != external_antenna {
+            antenna.set_level(if requested_antenna {
+                Level::High
+            } else {
+                Level::Low
+            });
+            external_antenna = requested_antenna;
+        }
         let item = critical_section::with(|cs| {
             RX_QUEUE.borrow(cs).borrow().as_ref().and_then(|q| q.pop())
         });

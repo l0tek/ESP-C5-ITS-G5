@@ -8,6 +8,7 @@ import android.bluetooth.BluetoothGattCharacteristic
 import android.bluetooth.BluetoothGattDescriptor
 import android.bluetooth.BluetoothManager
 import android.bluetooth.BluetoothProfile
+import android.bluetooth.BluetoothStatusCodes
 import android.bluetooth.le.ScanCallback
 import android.bluetooth.le.ScanFilter
 import android.bluetooth.le.ScanResult
@@ -29,10 +30,12 @@ typealias BuildConfig = org.l0tek.citsmap.BuildConfig
 class MainActivity : WryActivity() {
     private val citsServiceUuid = UUID.fromString("c1750001-6c6f-7465-6b2d-636974736735")
     private val citsDataUuid = UUID.fromString("c1750002-6c6f-7465-6b2d-636974736735")
+    private val citsAntennaUuid = UUID.fromString("c1750003-6c6f-7465-6b2d-636974736735")
     private val cccdUuid = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb")
     @Volatile private var citsBleStatus = -1
     @Volatile private var citsBleError = ""
     @Volatile private var citsBleGatt: BluetoothGatt? = null
+    @Volatile private var citsAntennaCharacteristic: BluetoothGattCharacteristic? = null
     @Volatile private var citsBleStopping = false
     private val citsBleQueue = ConcurrentLinkedQueue<ByteArray>()
     private val citsHandler = Handler(Looper.getMainLooper())
@@ -100,11 +103,13 @@ class MainActivity : WryActivity() {
 
         override fun onServicesDiscovered(gatt: BluetoothGatt, status: Int) {
             val characteristic = gatt.getService(citsServiceUuid)?.getCharacteristic(citsDataUuid)
-            if (status != BluetoothGatt.GATT_SUCCESS || characteristic == null) {
+            val antenna = gatt.getService(citsServiceUuid)?.getCharacteristic(citsAntennaUuid)
+            if (status != BluetoothGatt.GATT_SUCCESS || characteristic == null || antenna == null) {
                 failCitsBle("CITS-Bluetooth-Dienst wurde nicht gefunden")
                 gatt.disconnect()
                 return
             }
+            citsAntennaCharacteristic = antenna
             if (!gatt.setCharacteristicNotification(characteristic, true)) {
                 failCitsBle("Bluetooth-Notifications konnten nicht aktiviert werden")
                 gatt.disconnect()
@@ -197,6 +202,7 @@ class MainActivity : WryActivity() {
         citsBleQueue.clear()
         citsBleError = ""
         citsBleStopping = false
+        citsAntennaCharacteristic = null
         citsBleStatus = 0
         runOnUiThread {
             val missing = requiredCitsBlePermissions().filter { checkSelfPermission(it) != PackageManager.PERMISSION_GRANTED }
@@ -214,6 +220,7 @@ class MainActivity : WryActivity() {
                 citsBleGatt?.disconnect()
                 citsBleGatt?.close()
                 citsBleGatt = null
+                citsAntennaCharacteristic = null
             } catch (_: SecurityException) {}
         }
     }
@@ -221,6 +228,27 @@ class MainActivity : WryActivity() {
     fun getCitsBleStatus(): Int = citsBleStatus
     fun getCitsBleError(): String = citsBleError
     fun takeCitsBleBytes(): ByteArray? = citsBleQueue.poll()
+    fun setCitsExternalAntenna(external: Boolean): Boolean {
+        val gatt = citsBleGatt ?: return false
+        val characteristic = citsAntennaCharacteristic ?: return false
+        val value = byteArrayOf(if (external) 1 else 0)
+        return try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                gatt.writeCharacteristic(
+                    characteristic,
+                    value,
+                    BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT
+                ) == BluetoothStatusCodes.SUCCESS
+            } else {
+                @Suppress("DEPRECATION")
+                characteristic.value = value
+                @Suppress("DEPRECATION")
+                gatt.writeCharacteristic(characteristic)
+            }
+        } catch (_: SecurityException) {
+            false
+        }
+    }
 
     fun startCitsImport() {
         citsBytes = null

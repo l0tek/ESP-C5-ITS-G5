@@ -15,6 +15,8 @@ Die Ergebnisse stehen in [TEST-REPORT.md](TEST-REPORT.md).
 
 - Waveshare ESP32-C5-Zero, 4 MB Flash, kein PSRAM.
 - GPIO26 LOW: interne Keramikantenne; HIGH: externe IPEX-1-Antenne.
+- Bei einer Bluetooth-Verbindung kann die Android-App GPIO26 zur Laufzeit über
+  **Antenne: Intern / Extern** umschalten. Nach jedem Neustart ist intern aktiv.
 - USB-C über USB Serial/JTAG; keine UART-Brücke erforderlich.
 - `firmware/`: eigenständiges Cargo-Projekt für ESP32-C5.
 - `host/src/main.rs`: PCAP-Konverter ohne externe Rust-Crates.
@@ -132,8 +134,8 @@ hinzufügen und neu anmelden.
   können Frames kosten.
 - Kein positiver Funkempfangstest ohne passende ITS-G5-Quelle; `CITS-READY`
   bestätigt die erfolgreiche Rückkehr der Initialisierungsfunktionen.
-- Für die externe Antenne in `firmware/src/main.rs` den GPIO26-Ausgang auf
-  `Level::High` ändern und neu flashen. Die Ready-Meldung ebenfalls anpassen.
+- Die Antennenumschaltung setzt nur den RF-Schalter GPIO26. Eine externe
+  Antenne muss vor Auswahl von „Extern“ tatsächlich am IPEX-1-Anschluss sitzen.
 
 ## Upstream
 

@@ -13,6 +13,7 @@ const NOTIFY_CHUNK: usize = 240;
 
 static TX: Channel<CriticalSectionRawMutex, Vec<u8>, 4> = Channel::new();
 static CONNECTED: AtomicBool = AtomicBool::new(false);
+static EXTERNAL_ANTENNA: AtomicBool = AtomicBool::new(false);
 static BLE_DROPPED: AtomicU32 = AtomicU32::new(0);
 
 #[gatt_server]
@@ -24,6 +25,13 @@ struct Server {
 struct StreamService {
     #[characteristic(uuid = "c1750002-6c6f-7465-6b2d-636974736735", read, notify)]
     data: HeaplessVec<u8, NOTIFY_CHUNK>,
+    #[characteristic(
+        uuid = "c1750003-6c6f-7465-6b2d-636974736735",
+        read,
+        write,
+        value = false
+    )]
+    external_antenna: bool,
 }
 
 pub fn enqueue(line: &[u8]) {
@@ -37,6 +45,10 @@ pub fn enqueue(line: &[u8]) {
 
 pub fn dropped() -> u32 {
     BLE_DROPPED.load(Ordering::Relaxed)
+}
+
+pub fn external_antenna() -> bool {
+    EXTERNAL_ANTENNA.load(Ordering::Relaxed)
 }
 
 #[embassy_executor::task]
@@ -92,7 +104,8 @@ pub async fn run(controller: ExternalController<BleConnector<'static>, 1>) {
                 Ok(conn) => {
                     CONNECTED.store(true, Ordering::Relaxed);
                     esp_println::println!("CITS-BLE connected");
-                    let _ = select(gatt_events(&conn), notifications(&server, &conn)).await;
+                    let _ =
+                        select(gatt_events(&server, &conn), notifications(&server, &conn)).await;
                     CONNECTED.store(false, Ordering::Relaxed);
                     while TX.try_receive().is_ok() {}
                     esp_println::println!("CITS-BLE disconnected");
@@ -104,11 +117,21 @@ pub async fn run(controller: ExternalController<BleConnector<'static>, 1>) {
     .await;
 }
 
-async fn gatt_events<P: PacketPool>(conn: &GattConnection<'_, '_, P>) {
+async fn gatt_events<P: PacketPool>(server: &Server<'_>, conn: &GattConnection<'_, '_, P>) {
     loop {
         match conn.next().await {
             GattConnectionEvent::Disconnected { .. } => return,
             GattConnectionEvent::Gatt { event } => {
+                if let GattEvent::Write(write) = &event
+                    && write.handle() == server.stream.external_antenna.handle
+                    && let Some(&value) = write.data().first()
+                {
+                    EXTERNAL_ANTENNA.store(value != 0, Ordering::Relaxed);
+                    esp_println::println!(
+                        "CITS-ANTENNA {}",
+                        if value == 0 { "internal" } else { "external" }
+                    );
+                }
                 if let Ok(reply) = event.accept() {
                     reply.send().await;
                 }

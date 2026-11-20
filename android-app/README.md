@@ -18,6 +18,10 @@ Die Karte nutzt lokal mitgeliefertes Leaflet 1.9.4 und OpenStreetMap-Kacheln.
   `c1750001-6c6f-7465-6b2d-636974736735` und empfängt den Datenstrom per GATT-
   Notifications. Android fragt die nötige Bluetooth-Berechtigung beim ersten
   Verbindungsversuch ab.
+- Umschaltung zwischen interner Keramikantenne und externer IPEX-1-Antenne über
+  GPIO26 während einer Bluetooth-Verbindung. Die Firmware startet immer intern;
+  vor „Extern“ verlangt die App eine ausdrückliche Bestätigung, dass eine
+  geeignete Antenne am IPEX-1-Anschluss angeschlossen ist.
 - Android-Dialog für die USB-Gerätefreigabe; Geräteerkennung und Bulk-IN-Lesen
   laufen über die Android-USB-API und JNI, nicht über `/dev/ttyACM*`.
 - `CITS:`-Hexzeilen mit Chunk-Reassembly und begrenzter Zeilenlänge.

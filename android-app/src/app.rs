@@ -17,6 +17,7 @@ pub fn App() -> Element {
     let mut node_id = use_signal(String::new);
     let mut forwarding = use_signal(|| (false, String::new(), 0u64, 0u64));
     let mut recording = use_signal(|| (0usize, 0usize, 0u64));
+    let mut external_antenna = use_signal(|| false);
     let poll_runtime = runtime.clone();
     use_future(move || {
         let rt = poll_runtime.clone();
@@ -66,6 +67,8 @@ pub fn App() -> Element {
     let share = runtime.clone();
     let export = runtime.clone();
     let clear = runtime.clone();
+    let antenna_toggle = runtime.clone();
+    let antenna_confirm = runtime.clone();
     let source = data.source.clone();
     rsx! {
         document::Title { "C-ITS Map" }
@@ -107,7 +110,18 @@ pub fn App() -> Element {
                     button { class: "primary", onclick: move |_| { notice.set(String::new()); if connect.snapshot().running { connect.stop(); } else { connect.connect_usb(); } },
                         if data.running { "Trennen" } else { "USB verbinden" }
                     }
-                    button { disabled: data.running, onclick: move |_| { notice.set(String::new()); connect_ble.connect_ble(); }, "Bluetooth verbinden" }
+                    button { disabled: data.running, onclick: move |_| { notice.set(String::new()); external_antenna.set(false); connect_ble.connect_ble(); }, "Bluetooth verbinden" }
+                    button { class: "quiet", disabled: !data.running || !source.starts_with("Bluetooth LE"), onclick: move |_| {
+                        notice.set(String::new());
+                        if *external_antenna.read() {
+                            match antenna_toggle.set_external_antenna(false) {
+                                Ok(()) => { external_antenna.set(false); notice.set("Interne Keramikantenne aktiv".into()); }
+                                Err(error) => notice.set(error),
+                            }
+                        } else {
+                            modal.set("antenna");
+                        }
+                    }, if *external_antenna.read() { "Antenne: Extern" } else { "Antenne: Intern" } }
                     button { disabled: data.running, onclick: move |_| {notice.set(String::new());modal.set("import");}, "Import" }
                     button { disabled: recording.read().0 == 0, onclick: move |_| {
                         match export.export_recording() { Ok(message) => notice.set(message), Err(e) => notice.set(e) }
@@ -192,6 +206,20 @@ pub fn App() -> Element {
                             button { class: "primary", onclick: move |_| {
                                 match import_text.import(pasted.read().as_bytes(),"Eingefügtes Log") {Ok(())=>modal.set(""),Err(e)=>notice.set(e)}
                             }, "Verarbeiten" }
+                        }
+                    } else if *modal.read()=="antenna" {
+                        h2 { "Externe Antenne angeschlossen?" }
+                        p { "Vor dem Umschalten muss eine geeignete externe Antenne fest am IPEX-1-Anschluss des ESP32-C5 sitzen." }
+                        div { class: "notice", role: "alert", "Nicht ohne angeschlossene Antenne auf „Extern“ schalten." }
+                        if !notice.read().is_empty() { p { role: "alert", "{notice}" } }
+                        div { class: "dialog-actions",
+                            button { onclick: move |_| modal.set(""), "Abbrechen" }
+                            button { class: "primary", disabled: !data.running || !source.starts_with("Bluetooth LE"), onclick: move |_| {
+                                match antenna_confirm.set_external_antenna(true) {
+                                    Ok(()) => { external_antenna.set(true); notice.set("Externe IPEX-1-Antenne aktiv".into()); modal.set(""); }
+                                    Err(error) => notice.set(error),
+                                }
+                            }, "Ja, Antenne ist angeschlossen" }
                         }
                     } else if *modal.read()=="share" {
                         h2 { "Auf OpenTrafficMap teilen" }

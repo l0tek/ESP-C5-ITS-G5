@@ -208,6 +208,22 @@ impl Runtime {
             });
         }
     }
+    pub fn set_external_antenna(&self, external: bool) -> Result<(), String> {
+        let data = self.data.lock().unwrap();
+        if !data.running || !data.source.starts_with("Bluetooth LE") {
+            return Err("Antennenumschaltung benötigt eine Bluetooth-Verbindung".into());
+        }
+        drop(data);
+        #[cfg(target_os = "android")]
+        {
+            crate::ble::set_external_antenna(external)
+        }
+        #[cfg(not(target_os = "android"))]
+        {
+            let _ = external;
+            Err("Antennenumschaltung ist nur in der Android-App verfügbar".into())
+        }
+    }
     pub fn feed(&self, decoder: &mut LineDecoder, bytes: &[u8]) {
         let before = decoder.errors;
         for frame in decoder.feed(bytes) {

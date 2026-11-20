@@ -91,3 +91,24 @@ pub fn receive(runtime: &Runtime) -> Result<(), String> {
         std::thread::sleep(Duration::from_millis(50));
     }
 }
+
+pub fn set_external_antenna(external: bool) -> Result<(), String> {
+    let ctx = ndk_context::android_context();
+    let vm = unsafe { JavaVM::from_raw(ctx.vm().cast()) }.map_err(|e| e.to_string())?;
+    let mut env = vm.attach_current_thread().map_err(|e| e.to_string())?;
+    let activity = unsafe { JObject::from_raw(ctx.context().cast()) };
+    let queued = env
+        .call_method(
+            &activity,
+            "setCitsExternalAntenna",
+            "(Z)Z",
+            &[jni::objects::JValue::Bool(external.into())],
+        )
+        .and_then(|value| value.z())
+        .map_err(|e| e.to_string())?;
+    if queued {
+        Ok(())
+    } else {
+        Err("Antennenbefehl konnte nicht gesendet werden".into())
+    }
+}
