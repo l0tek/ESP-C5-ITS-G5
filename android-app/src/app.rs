@@ -247,7 +247,7 @@ pub fn App() -> Element {
                         p { "Version " {option_env!("CITS_APP_VERSION").unwrap_or(env!("CARGO_PKG_VERSION"))} " · Build " {option_env!("CITS_ANDROID_VERSION_CODE").unwrap_or("Entwicklung")} }
                         p { "OpenTrafficMap hat wichtige Grundlagen für günstigen C-ITS-Empfang, ESP32-C5-Firmware, Paketweiterleitung und öffentliche Verkehrskarten geschaffen. Vielen Dank an alle Mitwirkenden." }
                         p { "Dieses Projekt ist keine offizielle OpenTrafficMap-Veröffentlichung." }
-                        p { "Die App dekodiert CAM und DENM. Positionen werden nach 60 s (CAM) bzw. 5 min (DENM) ausgeblendet. Kryptografische Signaturen werden nicht geprüft; die Anzeige ist keine verlässliche Verkehrs- oder Gefahrenwarnung." }
+                        p { "Die App dekodiert CAM und DENM. Alle während der aktuellen Verbindung oder aus der aktuellen Aufnahme dekodierten Positionen bleiben sichtbar; neue Meldungen derselben Station aktualisieren ihren Marker. Kryptografische Signaturen werden nicht geprüft; die Anzeige ist keine verlässliche Verkehrs- oder Gefahrenwarnung." }
                         p { "Pakete bleiben lokal, solange die Weiterleitung ausgeschaltet ist. Kartenkacheln werden von OpenStreetMap geladen; dafür wird eine Internetverbindung benötigt." }
                         a { class: "help-link", href: "https://codeberg.org/opentrafficmap", target: "_blank", rel: "noopener", "OpenTrafficMap auf Codeberg ↗" }
                         div { class: "dialog-actions", button { class: "primary", onclick: move |_|modal.set(""), "Schließen" } }

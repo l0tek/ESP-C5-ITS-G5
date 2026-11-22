@@ -66,13 +66,4 @@ impl Dashboard {
         }
         self.revision += 1;
     }
-    pub fn expire(&mut self, now_ms: u64) {
-        let before = self.objects.len();
-        self.objects.retain(|_, o| {
-            now_ms.saturating_sub(o.received_ms) < if o.kind == "CAM" { 60_000 } else { 300_000 }
-        });
-        if before != self.objects.len() {
-            self.revision += 1;
-        }
-    }
 }

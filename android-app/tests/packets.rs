@@ -109,14 +109,13 @@ fn pcap_truncation_wrong_link_and_pcapng_rejected() {
     assert!(stream::import_frames(&[0x0a, 0x0d, 0x0d, 0x0a]).is_err());
 }
 #[test]
-fn repeated_station_updates_and_expires() {
+fn repeated_station_updates_and_remains_visible() {
     let mut d = Dashboard::default();
     d.insert(decode_frame(&demo::cam_frame(1, 0, 0), 1).unwrap());
     d.insert(decode_frame(&demo::cam_frame(1, 10_000_000, 0), 10).unwrap());
     assert_eq!(d.objects.len(), 1);
     assert_eq!(d.objects["cam:1"].latitude, 1.);
-    d.expire(60_010);
-    assert!(d.objects.is_empty());
+    assert_eq!(d.objects["cam:1"].received_ms, 10);
 }
 #[test]
 fn station_memory_is_bounded() {

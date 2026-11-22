@@ -57,9 +57,7 @@ pub struct Runtime {
 }
 impl Runtime {
     pub fn snapshot(&self) -> Dashboard {
-        let mut data = self.data.lock().unwrap();
-        data.expire(now_ms());
-        data.clone()
+        self.data.lock().unwrap().clone()
     }
     pub fn frame(&self, frame: &[u8], live: bool) {
         // Only live Bluetooth/USB packets may be published. Imports and demos remain local.
