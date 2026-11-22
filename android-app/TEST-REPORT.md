@@ -105,6 +105,11 @@ von Git ausgeschlossen. Die Quellen und der Bericht sind im Projekt enthalten.
   aus Downloads ausgewählt: 1.118 Frames, 7 dekodierte CAM-Nachrichten und
   2 sichtbare Kartenmarker. Screenshot lokal:
   `../test-results/android-native-pcap-import.png`.
+- Die Infrastruktur-Aufzeichnung `cits-1795365581771.pcap` mit 292 Frames wurde
+  direkt gegen den Runtime-Import geprüft: 284 MAPEM-, SPATEM- und
+  SREM-Nachrichten werden dekodiert und als sieben Infrastruktur-Einträge an
+  ihren GeoNetworking-Quellpositionen dargestellt; acht reine Beacons bleiben
+  als nicht darstellbar gekennzeichnet.
 - Die automatische Prüfung des Abbruchhinweises überschritt zunächst das
   20-Sekunden-Zeitlimit des frisch gestarteten Emulators. Der Hinweis und der
   wieder aktivierte Auswahlbutton wurden danach im WebView bestätigt.

@@ -31,13 +31,13 @@
       current.add(o.key);
       let marker=markers.get(o.key);
       if (!marker) {
-        const warning=o.kind==='DENM';
-        const icon=L.divIcon({className:'traffic-marker', html:`<span class="${warning?'event-dot':'vehicle-dot'}">${warning?'!':'↑'}</span>`,iconSize:[30,30],iconAnchor:[15,15]});
+        const warning=o.kind==='DENM', infrastructure=['MAPEM','SPATEM','SREM'].includes(o.kind);
+        const icon=L.divIcon({className:'traffic-marker', html:`<span class="${warning?'event-dot':'vehicle-dot'}">${warning?'!':infrastructure?'●':'↑'}</span>`,iconSize:[30,30],iconAnchor:[15,15]});
         marker=L.marker([o.latitude,o.longitude],{icon}).addTo(map);markers.set(o.key,marker);
       }
       marker.setLatLng([o.latitude,o.longitude]);marker.bindPopup(popup(o));
       const arrow=marker.getElement()?.querySelector('.vehicle-dot');
-      if (arrow) arrow.style.transform=`rotate(${o.heading||0}deg)`;
+      if (arrow && o.kind==='CAM') arrow.style.transform=`rotate(${o.heading||0}deg)`;
     }
     for (const [key,m] of markers) if (!current.has(key)) { map.removeLayer(m);markers.delete(key); }
     if (!centered && markers.size) { map.fitBounds(L.featureGroup([...markers.values()]).getBounds().pad(.3),{maxZoom:15});centered=true; }

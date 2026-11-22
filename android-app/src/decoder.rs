@@ -56,6 +56,31 @@ fn coordinates(lat: i32, lon: i32) -> Result<(f64, f64), String> {
     }
     Ok((f64::from(lat) / 10_000_000., f64::from(lon) / 10_000_000.))
 }
+
+fn infrastructure(
+    geonetworking: Option<c_its_parser::gn::Packet<'_>>,
+    station_id: u32,
+    kind: &str,
+    received_ms: u64,
+) -> Result<Observation, String> {
+    let position = geonetworking
+        .and_then(|packet| packet.source_position_vector())
+        .ok_or("GeoNetworking-Quellposition fehlt")?;
+    let (latitude, longitude) = coordinates(position.latitude, position.longitude)?;
+    Ok(Observation {
+        key: format!("{}:{station_id}", kind.to_ascii_lowercase()),
+        station_id,
+        kind: kind.into(),
+        latitude,
+        longitude,
+        speed_kmh: None,
+        heading: None,
+        station_type: 0,
+        terminated: false,
+        received_ms,
+    })
+}
+
 fn observation(message: ItsMessage<'_>, received_ms: u64) -> Result<Observation, String> {
     use c_its_parser::standards::cam_1_4_1::cam_pdu_descriptions::HighFrequencyContainer;
     let mut out = Observation {
@@ -113,6 +138,37 @@ fn observation(message: ItsMessage<'_>, received_ms: u64) -> Result<Observation,
                 (out.latitude, out.longitude) =
                     coordinates(m.event_position.latitude.0, m.event_position.longitude.0)?;
             }
+        }
+        ItsMessage::Spatem {
+            geonetworking,
+            etsi,
+            ..
+        } => {
+            return infrastructure(
+                geonetworking,
+                etsi.header.station_id.0,
+                "SPATEM",
+                received_ms,
+            );
+        }
+        ItsMessage::Mapem {
+            geonetworking,
+            etsi,
+            ..
+        } => {
+            return infrastructure(
+                geonetworking,
+                etsi.header.station_id.0,
+                "MAPEM",
+                received_ms,
+            );
+        }
+        ItsMessage::Srem {
+            geonetworking,
+            etsi,
+            ..
+        } => {
+            return infrastructure(geonetworking, etsi.header.station_id.0, "SREM", received_ms);
         }
     }
     Ok(out)

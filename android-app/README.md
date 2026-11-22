@@ -26,7 +26,10 @@ Die Karte nutzt lokal mitgeliefertes Leaflet 1.9.4 und OpenStreetMap-Kacheln.
   laufen über die Android-USB-API und JNI, nicht über `/dev/ttyACM*`.
 - `CITS:`-Hexzeilen mit Chunk-Reassembly und begrenzter Zeilenlänge.
 - Rohe 802.11-Datenframes → LLC/SNAP → GeoNetworking → BTP → ASN.1 UPER.
-- CAM v1.4.1 sowie DENM v1.3.1 / v2.2.1 über `c-its-parser` 2.4.2.
+- CAM, DENM, MAPEM, SPATEM und SREM; Infrastrukturmeldungen werden an ihrer
+  GeoNetworking-Quellposition dargestellt.
+- CAM v1.4.1, DENM v1.3.1 / v2.2.1 sowie MAPEM, SPATEM und SREM über
+  `c-its-parser` 2.4.2.
 - Positionen, Stations-ID, CAM-Geschwindigkeit und Richtung; DENM-Ereignisse
   werden anhand von Action-ID und Sequenznummer unterschieden. Abmeldungen
   entfernen das passende Ereignis.

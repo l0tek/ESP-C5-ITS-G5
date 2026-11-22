@@ -59,6 +59,10 @@ pub fn App() -> Element {
     let objects: Vec<_> = data.objects.values().cloned().collect();
     let vehicles = objects.iter().filter(|o| o.kind == "CAM").count();
     let events = objects.iter().filter(|o| o.kind == "DENM").count();
+    let infrastructure = objects
+        .iter()
+        .filter(|o| matches!(o.kind.as_str(), "MAPEM" | "SPATEM" | "SREM"))
+        .count();
     let connect = runtime.clone();
     let connect_ble = runtime.clone();
     let demo = runtime.clone();
@@ -103,6 +107,7 @@ pub fn App() -> Element {
                     div { class: "metric", strong { "{data.frames}" } span { "Frames" } }
                     div { class: "metric", strong { "{vehicles}" } span { "CAM-Stationen" } }
                     div { class: "metric", strong { "{events}" } span { "DENM-Ereignisse" } }
+                    div { class: "metric", strong { "{infrastructure}" } span { "Infrastruktur" } }
                     div { class: "metric", strong { "{data.rejected + data.framing_errors}" } span { "Nicht darstellbar" } }
                     div { class: "metric", strong { "{recording.read().0}" } span { "Aufgezeichnet" } }
                 }
@@ -247,7 +252,7 @@ pub fn App() -> Element {
                         p { "Version " {option_env!("CITS_APP_VERSION").unwrap_or(env!("CARGO_PKG_VERSION"))} " · Build " {option_env!("CITS_ANDROID_VERSION_CODE").unwrap_or("Entwicklung")} }
                         p { "OpenTrafficMap hat wichtige Grundlagen für günstigen C-ITS-Empfang, ESP32-C5-Firmware, Paketweiterleitung und öffentliche Verkehrskarten geschaffen. Vielen Dank an alle Mitwirkenden." }
                         p { "Dieses Projekt ist keine offizielle OpenTrafficMap-Veröffentlichung." }
-                        p { "Die App dekodiert CAM und DENM. Alle während der aktuellen Verbindung oder aus der aktuellen Aufnahme dekodierten Positionen bleiben sichtbar; neue Meldungen derselben Station aktualisieren ihren Marker. Kryptografische Signaturen werden nicht geprüft; die Anzeige ist keine verlässliche Verkehrs- oder Gefahrenwarnung." }
+                        p { "Die App dekodiert CAM, DENM, MAPEM, SPATEM und SREM. Für Infrastrukturmeldungen wird die übertragene GeoNetworking-Quellposition angezeigt; sie muss nicht dem exakten Antennenstandort entsprechen. Alle während der aktuellen Verbindung oder aus der aktuellen Aufnahme dekodierten Positionen bleiben sichtbar; neue Meldungen derselben Station aktualisieren ihren Marker. Kryptografische Signaturen werden nicht geprüft; die Anzeige ist keine verlässliche Verkehrs- oder Gefahrenwarnung." }
                         p { "Pakete bleiben lokal, solange die Weiterleitung ausgeschaltet ist. Kartenkacheln werden von OpenStreetMap geladen; dafür wird eine Internetverbindung benötigt." }
                         a { class: "help-link", href: "https://codeberg.org/opentrafficmap", target: "_blank", rel: "noopener", "OpenTrafficMap auf Codeberg ↗" }
                         div { class: "dialog-actions", button { class: "primary", onclick: move |_|modal.set(""), "Schließen" } }
