@@ -15,6 +15,7 @@ pub struct Observation {
     pub station_type: u8,
     pub terminated: bool,
     pub received_ms: u64,
+    pub details: Vec<String>,
 }
 
 #[derive(Clone, Debug, Serialize)]

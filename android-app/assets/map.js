@@ -22,6 +22,9 @@
       if (!text) continue;
       const row=document.createElement('div');row.textContent=text;element.append(row);
     }
+    for (const text of (o.details || [])) {
+      const row=document.createElement('div'); row.className='message-detail'; row.textContent=text; element.append(row);
+    }
     return element;
   }
   window.citsRender = (snapshot) => {
