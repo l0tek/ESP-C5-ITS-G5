@@ -1,4 +1,4 @@
-use crate::model::Observation;
+use crate::model::{Observation, SignalLamp};
 use c_its_parser::{Headers, ItsMessage, de};
 
 /// Strip only validated, unfragmented 802.11 data + LLC/SNAP headers.
@@ -80,6 +80,7 @@ fn infrastructure(
         terminated: false,
         received_ms,
         details,
+        signal_lamps: Vec::new(),
     })
 }
 
@@ -99,6 +100,20 @@ fn phase_name(state: MovementPhaseState) -> &'static str {
         MovementPhaseState::permissive_clearance => "gelb (bedingt)",
         MovementPhaseState::protected_clearance => "gelb (geschützt)",
         MovementPhaseState::caution_Conflicting_Traffic => "gelb blinkend",
+    }
+}
+
+fn phase_color(state: MovementPhaseState) -> &'static str {
+    match state {
+        MovementPhaseState::stop_Then_Proceed | MovementPhaseState::stop_And_Remain => "red",
+        MovementPhaseState::pre_Movement => "red-yellow",
+        MovementPhaseState::permissive_Movement_Allowed
+        | MovementPhaseState::protected_Movement_Allowed => "green",
+        MovementPhaseState::permissive_clearance
+        | MovementPhaseState::protected_clearance
+        | MovementPhaseState::caution_Conflicting_Traffic => "yellow",
+        MovementPhaseState::dark => "dark",
+        MovementPhaseState::unavailable => "unknown",
     }
 }
 
@@ -135,6 +150,7 @@ fn observation(message: ItsMessage<'_>, received_ms: u64) -> Result<Observation,
         terminated: false,
         received_ms,
         details: Vec::new(),
+        signal_lamps: Vec::new(),
     };
     match message {
         ItsMessage::Cam { etsi, .. } => {
@@ -186,8 +202,15 @@ fn observation(message: ItsMessage<'_>, received_ms: u64) -> Result<Observation,
             ..
         } => {
             let mut details = Vec::new();
+            let mut signal_lamps = Vec::new();
             for intersection in &etsi.spat.intersections.0 {
                 for movement in &intersection.states.0 {
+                    if let Some(current) = movement.state_time_speed.0.first() {
+                        signal_lamps.push(SignalLamp {
+                            group: movement.signal_group.0,
+                            color: phase_color(current.event_state).into(),
+                        });
+                    }
                     for event in &movement.state_time_speed.0 {
                         let mut text = format!(
                             "Kreuzung {} · Signalgruppe {}: {}",
@@ -215,13 +238,15 @@ fn observation(message: ItsMessage<'_>, received_ms: u64) -> Result<Observation,
                     }
                 }
             }
-            return infrastructure(
+            let mut observation = infrastructure(
                 geonetworking,
                 etsi.header.station_id.0,
                 "SPATEM",
                 received_ms,
                 details,
-            );
+            )?;
+            observation.signal_lamps = signal_lamps;
+            return Ok(observation);
         }
         ItsMessage::Mapem {
             geonetworking,

@@ -1,0 +1,44 @@
+.signal-cluster {
+  display: flex;
+  gap: 2px;
+  filter: drop-shadow(0 2px 4px #000a);
+}
+.signal-unit {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 3px 3px 10px;
+  background: #17201c;
+  border: 1px solid #dfe8df;
+  border-radius: 5px;
+}
+.signal-unit i {
+  display: block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #303833;
+  box-shadow: inset 0 1px 2px #000;
+}
+.signal-unit i.red.on {
+  background: #ff3b30;
+  box-shadow: 0 0 7px #ff3b30;
+}
+.signal-unit i.yellow.on {
+  background: #ffd60a;
+  box-shadow: 0 0 7px #ffd60a;
+}
+.signal-unit i.green.on {
+  background: #34c759;
+  box-shadow: 0 0 7px #34c759;
+}
+.signal-unit b {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  color: #dfe8df;
+  font: 7px/9px system-ui;
+  text-align: center;
+}

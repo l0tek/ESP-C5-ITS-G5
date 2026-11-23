@@ -4,6 +4,12 @@ use std::collections::BTreeMap;
 pub const MAX_OBJECTS: usize = 512;
 
 #[derive(Clone, Debug, PartialEq, Serialize)]
+pub struct SignalLamp {
+    pub group: u8,
+    pub color: String,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize)]
 pub struct Observation {
     pub key: String,
     pub station_id: u32,
@@ -16,6 +22,7 @@ pub struct Observation {
     pub terminated: bool,
     pub received_ms: u64,
     pub details: Vec<String>,
+    pub signal_lamps: Vec<SignalLamp>,
 }
 
 #[derive(Clone, Debug, Serialize)]

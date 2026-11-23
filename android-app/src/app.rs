@@ -3,6 +3,7 @@ use dioxus::prelude::*;
 use std::{sync::atomic::Ordering, time::Duration};
 
 const CSS: Asset = asset!("/assets/app.css");
+const SIGNALS_CSS: Asset = asset!("/assets/signals.css");
 const LEAFLET_CSS: Asset = asset!("/assets/vendor/leaflet.css");
 const LEAFLET_JS: Asset = asset!("/assets/vendor/leaflet.js");
 
@@ -78,6 +79,7 @@ pub fn App() -> Element {
         document::Title { "C-ITS Map" }
         document::Stylesheet { href: LEAFLET_CSS }
         document::Stylesheet { href: CSS }
+        document::Stylesheet { href: SIGNALS_CSS }
         document::Script { src: LEAFLET_JS }
         main { class: "shell",
             header {

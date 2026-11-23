@@ -12,6 +12,17 @@
     .on('tileload', () => { document.getElementById('map-status').textContent=''; }).addTo(map);
   const markers = new Map();
   let source = '', centered = false;
+  function markerIcon(o) {
+    if (o.kind === 'SPATEM') {
+      const lamps=(o.signal_lamps || []).slice(0,4).map(s => {
+        const active=new Set(s.color==='red-yellow' ? ['red','yellow'] : [s.color]);
+        return `<span class="signal-unit" title="Signalgruppe ${s.group}"><i class="red ${active.has('red')?'on':''}"></i><i class="yellow ${active.has('yellow')?'on':''}"></i><i class="green ${active.has('green')?'on':''}"></i><b>${s.group}</b></span>`;
+      }).join('');
+      return L.divIcon({className:'traffic-marker',html:`<span class="signal-cluster">${lamps || '<span class="signal-unit"><i></i><i></i><i></i></span>'}</span>`,iconSize:[Math.max(24,Math.min(4,(o.signal_lamps||[]).length)*20),42],iconAnchor:[12,21]});
+    }
+    const warning=o.kind==='DENM', infrastructure=['MAPEM','SREM'].includes(o.kind);
+    return L.divIcon({className:'traffic-marker',html:`<span class="${warning?'event-dot':'vehicle-dot'}">${warning?'!':infrastructure?'●':'↑'}</span>`,iconSize:[30,30],iconAnchor:[15,15]});
+  }
   function popup(o) {
     const element=document.createElement('div');
     const title=document.createElement('strong'); title.textContent=`${o.kind} · ${o.station_id}`; element.append(title);
@@ -34,11 +45,9 @@
       current.add(o.key);
       let marker=markers.get(o.key);
       if (!marker) {
-        const warning=o.kind==='DENM', infrastructure=['MAPEM','SPATEM','SREM'].includes(o.kind);
-        const icon=L.divIcon({className:'traffic-marker', html:`<span class="${warning?'event-dot':'vehicle-dot'}">${warning?'!':infrastructure?'●':'↑'}</span>`,iconSize:[30,30],iconAnchor:[15,15]});
-        marker=L.marker([o.latitude,o.longitude],{icon}).addTo(map);markers.set(o.key,marker);
+        marker=L.marker([o.latitude,o.longitude],{icon:markerIcon(o)}).addTo(map);markers.set(o.key,marker);
       }
-      marker.setLatLng([o.latitude,o.longitude]);marker.bindPopup(popup(o));
+      marker.setLatLng([o.latitude,o.longitude]);marker.setIcon(markerIcon(o));marker.bindPopup(popup(o));
       const arrow=marker.getElement()?.querySelector('.vehicle-dot');
       if (arrow && o.kind==='CAM') arrow.style.transform=`rotate(${o.heading||0}deg)`;
     }
